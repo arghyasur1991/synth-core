@@ -28,6 +28,15 @@ namespace Genesis.Sentience.Synth
         public const int FEATURES_PER_BODY = 5;
         public const int CONTACT_OBS_DIM = KEY_BODY_COUNT * FEATURES_PER_BODY;
 
+        public const int SLOT_LEFT_FOOT = 0;
+        public const int SLOT_RIGHT_FOOT = 1;
+        public const int SLOT_LEFT_HAND = 2;
+        public const int SLOT_RIGHT_HAND = 3;
+        public const int SLOT_HIPS = 4;
+        public const int SLOT_LEFT_KNEE = 5;
+        public const int SLOT_RIGHT_KNEE = 6;
+        public const int SLOT_HEAD = 7;
+
         private float[] _obsBuffer;
         private bool _initialized;
 
@@ -60,6 +69,35 @@ namespace Genesis.Sentience.Synth
             SynthBone.RightLowerLeg,
             SynthBone.Head,
         };
+
+        /// <summary>Raw force magnitude (Newtons) for a key body slot.</summary>
+        public float GetForceMagnitude(int slot) =>
+            _forceMag != null && slot >= 0 && slot < KEY_BODY_COUNT ? _forceMag[slot] : 0f;
+
+        /// <summary>
+        /// Normalized contact normal Z component for a key body slot.
+        /// Positive = force points upward (e.g., ground pushing up on foot).
+        /// </summary>
+        public float GetNormalZ(int slot) =>
+            _normalZ != null && slot >= 0 && slot < KEY_BODY_COUNT && _forceMag[slot] > 1e-6f
+                ? _normalZ[slot] / _forceMag[slot] : 0f;
+
+        /// <summary>Whether this key body slot has any active contact.</summary>
+        public bool IsInContact(int slot) =>
+            _inContact != null && slot >= 0 && slot < KEY_BODY_COUNT && _inContact[slot];
+
+        /// <summary>
+        /// Downward support force for a slot: the vertical component of
+        /// contact force where the normal points upward (ground reaction).
+        /// </summary>
+        public float GetSupportForce(int slot)
+        {
+            if (_forceMag == null || slot < 0 || slot >= KEY_BODY_COUNT) return 0f;
+            float fm = _forceMag[slot];
+            if (fm < 1e-6f) return 0f;
+            float nz = _normalZ[slot] / fm;
+            return nz > 0f ? fm * nz : 0f;
+        }
 
         /// <summary>
         /// Initialize contact sensing after MuJoCo scene is ready.
