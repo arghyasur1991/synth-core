@@ -62,10 +62,9 @@ namespace Genesis.Sentience.Synth
             for (int i = 0; i < _numIncludedJoints; i++)
             {
                 int qvelIdx = _includedQvelIdx[i];
-                // Map qvel index to joint index: for standard humanoid layout,
-                // root free joint uses qvel[0:5], then hinge j uses qvel[6+j].
-                // So joint index = qvelIdx - 6.
-                int jntIdx = qvelIdx - 6;
+                // Map qvel index to joint index: free joint is joint 0 (nv=6),
+                // first hinge is joint 1 at qvel[6]. So jntIdx = qvelIdx - 5.
+                int jntIdx = qvelIdx - 5;
 
                 float rangeL = 0f, rangeU = 0f;
                 if (jntIdx >= 0 && jntIdx < njnt)
