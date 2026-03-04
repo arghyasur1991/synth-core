@@ -1,0 +1,16 @@
+{
+    "name": "Synth.Runtime",
+    "rootNamespace": "Genesis.Synth",
+    "references": [
+        "Mujoco.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
