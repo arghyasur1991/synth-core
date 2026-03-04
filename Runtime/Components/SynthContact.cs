@@ -46,6 +46,9 @@ namespace Genesis.Sentience.Synth
         // MuJoCo body index -> key body slot index (0-7), or -1 if not a key body
         private int[] _bodyToSlot;
 
+        // Reverse: slot index -> MuJoCo body index (-1 if unmapped)
+        private int[] _slotToBodyId;
+
         // Per-key-body accumulators (reset each frame)
         private float[] _forceMag;
         private float[] _normalX, _normalY, _normalZ;
@@ -87,6 +90,18 @@ namespace Genesis.Sentience.Synth
             _inContact != null && slot >= 0 && slot < KEY_BODY_COUNT && _inContact[slot];
 
         /// <summary>
+        /// World-frame Z position (height) of a key body.
+        /// Used for proximity-based rewards — creates gradient before contact occurs.
+        /// </summary>
+        public unsafe float GetBodyWorldZ(int slot, MujocoLib.mjData_* data)
+        {
+            if (_slotToBodyId == null || slot < 0 || slot >= KEY_BODY_COUNT) return 0f;
+            int bodyId = _slotToBodyId[slot];
+            if (bodyId < 0 || data == null) return 0f;
+            return (float)data->xpos[bodyId * 3 + 2];
+        }
+
+        /// <summary>
         /// Downward support force for a slot: the vertical component of
         /// contact force where the normal points upward (ground reaction).
         /// </summary>
@@ -119,6 +134,10 @@ namespace Genesis.Sentience.Synth
             for (int b = 0; b < nbody; b++)
                 _bodyToSlot[b] = -1;
 
+            _slotToBodyId = new int[KEY_BODY_COUNT];
+            for (int i = 0; i < KEY_BODY_COUNT; i++)
+                _slotToBodyId[i] = -1;
+
             int mapped = 0;
             if (boneMapper != null)
             {
@@ -134,6 +153,7 @@ namespace Genesis.Sentience.Synth
                     if (bodyId >= 0 && bodyId < nbody)
                     {
                         _bodyToSlot[bodyId] = slot;
+                        _slotToBodyId[slot] = bodyId;
                         mapped++;
                     }
                 }
