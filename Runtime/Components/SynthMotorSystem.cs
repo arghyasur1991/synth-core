@@ -54,6 +54,10 @@ namespace Genesis.Sentience.Synth
         // Resized once when boneFilter is built; reused on every GetObservation() call.
         private float[] _obsBuffer;
 
+        // Contact and strain subsystems (initialized after MjScene init)
+        private SynthContact _contactSense;
+        private StrainComputer _strainComputer;
+
         // Pending action from brain (applied in ctrlCallback)
         private float[] pendingAction;
 
@@ -294,25 +298,37 @@ namespace Genesis.Sentience.Synth
 
         /// <summary>
         /// Build the BoneFilterConfig from physics-only bones in BoneJointsData.
+        /// Also initializes contact sensing and strain computation.
         /// Called once after MjScene initialization.
         /// </summary>
         private unsafe void BuildBoneFilter()
         {
             if (!MjScene.InstanceExists || MjScene.Instance.Model == null) return;
 
+            var model = MjScene.Instance.Model;
             var excludedIds = GetPhysicsOnlyActuatorMujocoIds();
-            boneFilter = BoneFilterConfig.Build(MjScene.Instance.Model, excludedIds);
+            boneFilter = BoneFilterConfig.Build(model, excludedIds);
             _obsBuffer = new float[boneFilter.physicsObsDim];
 
-            Debug.Log($"SynthMotorSystem: BoneFilter built -- physicsObsDim={boneFilter.physicsObsDim}, " +
-                      $"actDim={boneFilter.actDim}, filteredJoints={boneFilter.filteredJointCount}");
+            // Initialize per-body contact sensing
+            _contactSense = GetComponent<SynthContact>();
+            if (_contactSense == null)
+                _contactSense = gameObject.AddComponent<SynthContact>();
+            _contactSense.Initialize(model, synthEntity?.BoneMapper);
+
+            // Initialize per-joint strain computation
+            _strainComputer = new StrainComputer(model, boneFilter);
+
+            Debug.Log($"SynthMotorSystem: BoneFilter built — physicsObsDim={boneFilter.physicsObsDim}, " +
+                      $"actDim={boneFilter.actDim}, filteredJoints={boneFilter.filteredJointCount}, " +
+                      $"contactDim={boneFilter.contactObsDim}, strainDim={boneFilter.strainObsDim}");
         }
 
         /// <summary>
         /// Get the MuJoCo-level physics observation vector (zero-allocation hot path).
         /// Fills a pre-allocated buffer via SynthObservations.FillPhysicsObs.
         ///
-        /// cfrc_ext is already valid after mj_step2 — no need to call mj_rnePostConstraint.
+        /// Includes per-body contact observations and per-joint strain.
         ///
         /// Returns just the physics portion -- consumers (brain, imitation env) append
         /// task-specific data (reference motion, phase) on top.
@@ -326,10 +342,22 @@ namespace Genesis.Sentience.Synth
             if (_obsBuffer == null || _obsBuffer.Length != boneFilter.physicsObsDim)
                 _obsBuffer = new float[boneFilter.physicsObsDim];
 
+            // Compute contact and strain before building the observation vector
+            _contactSense?.ComputeContacts(data);
+            _strainComputer?.Compute(data);
+
+            float[] contactObs = _contactSense?.GetObservation();
+            float[] strainObs = _strainComputer?.StrainBuffer;
+
             SynthObservations.FillPhysicsObs(_obsBuffer, 0, data->qpos, data->qvel,
-                data->qfrc_actuator, data->cfrc_ext, boneFilter);
+                data->qfrc_actuator, contactObs, strainObs, boneFilter);
             return _obsBuffer;
         }
+
+        /// <summary>
+        /// Strain computer for external access (e.g. reward computation).
+        /// </summary>
+        public StrainComputer Strain => _strainComputer;
 
         /// <summary>
         /// Apply a per-actuator action vector. Actions are stored and applied

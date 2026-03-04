@@ -12,6 +12,12 @@ namespace Genesis.Sentience.Synth
     /// Assumes standard humanoid layout: 1 free joint (root, 7 qpos / 6 qvel) + N hinge joints.
     /// Each hinge joint has 1 qpos, 1 qvel (DOF), and 1 actuator.
     ///
+    /// Physics observation layout:
+    ///   qpos[root]    (5)  +  qpos[joints] (N)  +
+    ///   qvel[root]    (6)  +  qvel[joints] (N)  +
+    ///   qfrc_actuator (N)  +
+    ///   contact       (40) +  strain (N)
+    ///
     /// Used by:
     ///   - SynthMotorSystem (builds once after MjScene init, exposes as property)
     ///   - SynthImitationEnv (receives from trainer, uses for obs/action/reward)
@@ -35,6 +41,12 @@ namespace Genesis.Sentience.Synth
 
         /// <summary>Physics observation dimension (before task-specific data like reference/phase)</summary>
         public int physicsObsDim;
+
+        /// <summary>Contact observation dimension (SynthContact per-body data)</summary>
+        public int contactObsDim;
+
+        /// <summary>Per-joint strain observation dimension</summary>
+        public int strainObsDim;
 
         /// <summary>Action dimension = filteredJointCount</summary>
         public int actDim;
@@ -83,7 +95,12 @@ namespace Genesis.Sentience.Synth
             int nIncQpos = inclQpos.Count;
             int nIncQvel = inclQvel.Count;
 
-            int physicsObsDim = 5 + nIncQpos + 6 + nIncQvel + nIncQvel + 6;
+            int contactDim = SynthContact.CONTACT_OBS_DIM; // 40
+            int strainDim = nIncQvel; // one strain value per included DOF
+
+            // Layout: root_qpos(5) + joint_qpos(N) + root_qvel(6) + joint_qvel(N) +
+            //         qfrc_actuator(N) + contact(40) + strain(N)
+            int physicsObsDim = 5 + nIncQpos + 6 + nIncQvel + nIncQvel + contactDim + strainDim;
 
             var config = new BoneFilterConfig
             {
@@ -96,12 +113,15 @@ namespace Genesis.Sentience.Synth
                 includedActuatorIdx = inclAct.ToArray(),
                 filteredJointCount = inclAct.Count,
                 physicsObsDim = physicsObsDim,
+                contactObsDim = contactDim,
+                strainObsDim = strainDim,
                 actDim = inclAct.Count
             };
 
             Debug.Log($"BoneFilterConfig: nq={nq}, nv={nv}, nu={nu}, nbody={nbody}, " +
                       $"excluded={excludedLog.Count} [{string.Join(", ", excludedLog)}], " +
-                      $"included={inclAct.Count}, physicsObsDim={physicsObsDim}, actDim={config.actDim}");
+                      $"included={inclAct.Count}, physicsObsDim={physicsObsDim} " +
+                      $"(contact={contactDim}, strain={strainDim}), actDim={config.actDim}");
 
             return config;
         }

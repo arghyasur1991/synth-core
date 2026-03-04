@@ -41,6 +41,12 @@ namespace Genesis.Sentience.Synth
         /// </summary>
         public BoneFilterConfig Filter => motorSystem != null ? motorSystem.Filter : default;
 
+        /// <summary>
+        /// Strain computer for external access (e.g. reward computation needs mean strain).
+        /// Returns null before initialization.
+        /// </summary>
+        public StrainComputer Strain => motorSystem?.Strain;
+
         void Awake()
         {
             motorSystem = GetComponent<SynthMotorSystem>();
