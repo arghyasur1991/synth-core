@@ -7,8 +7,17 @@ namespace Genesis.Sentience.Synth
     /// <summary>
     /// Shared pure functions for building MuJoCo-level observation vectors.
     ///
-    /// The field order matches the trained imitation model EXACTLY.
-    /// Do NOT change the layout without retraining.
+    /// Layout (v2 — with per-body contact and per-joint strain):
+    ///   qpos[2:7]                    (root Z + quat)              = 5
+    ///   qpos[filtered hinges]                                     = N
+    ///   qvel[0:6]                    (root vel)                   = 6
+    ///   qvel[filtered hinges]                                     = N
+    ///   qfrc_actuator[filtered DOFs]                              = N
+    ///   contact[8 bodies × 5]        (per-body contact sensing)   = 40
+    ///   strain[filtered DOFs]         (per-joint strain/pain)     = N
+    ///
+    /// BREAKING CHANGE from v1: cfrc_ext sum (6 floats) is replaced by
+    /// contact (40) + strain (N). Saved models must be retrained.
     /// </summary>
     public static class SynthObservations
     {
@@ -25,36 +34,21 @@ namespace Genesis.Sentience.Synth
         }
 
         /// <summary>
-        /// Build the physics observation vector from MuJoCo data pointers.
-        ///
-        /// Lean layout + contact summary:
-        ///   qpos[2:7]                    (root Z + quat)              = 5
-        ///   qpos[filtered hinges]                                     = N
-        ///   qvel[0:6]                    (root vel)                   = 6
-        ///   qvel[filtered hinges]                                     = N
-        ///   qfrc_actuator[filtered DOFs]                              = N
-        ///   totalCfrcExt                 (sum of all body contact)    = 6
-        /// </summary>
-        public static unsafe float[] BuildPhysicsObs(MujocoLib.mjData_* data, BoneFilterConfig filter)
-        {
-            var obs = new float[filter.physicsObsDim];
-            FillPhysicsObs(obs, 0, data->qpos, data->qvel,
-                data->qfrc_actuator, data->cfrc_ext, filter);
-            return obs;
-        }
-
-        /// <summary>
         /// Fill physics obs directly into a pre-allocated buffer at the given offset.
         /// Zero-allocation hot path for training loops.
+        ///
+        /// contactObs and strainObs are pre-computed by SynthContact.ComputeContacts()
+        /// and StrainComputer.Compute() respectively, and embedded into the physics obs
+        /// at the end of the vector.
         /// </summary>
         public static unsafe void FillPhysicsObs(
             float[] obs, int offset,
-            double* qpos, double* qvel, double* qfrcActuator, double* cfrcExt,
+            double* qpos, double* qvel, double* qfrcActuator,
+            float[] contactObs, float[] strainObs,
             BoneFilterConfig filter)
         {
             int[] inclQpos = filter.includedQposIdx;
             int[] inclQvel = filter.includedQvelIdx;
-            int nbody = filter.nbody;
 
             int idx = offset;
 
@@ -82,20 +76,24 @@ namespace Genesis.Sentience.Synth
             }
             else idx += inclQvel.Length;
 
-            if (cfrcExt != null)
+            // Per-body contact observations (40 floats)
+            if (contactObs != null && contactObs.Length == SynthContact.CONTACT_OBS_DIM)
             {
-                float t0 = 0f, t1 = 0f, t2 = 0f, t3 = 0f, t4 = 0f, t5 = 0f;
-                for (int b = 1; b < nbody; b++)
-                {
-                    double* src = cfrcExt + b * 6;
-                    t0 += (float)src[0]; t1 += (float)src[1]; t2 += (float)src[2];
-                    t3 += (float)src[3]; t4 += (float)src[4]; t5 += (float)src[5];
-                }
-                obs[idx++] = t0; obs[idx++] = t1; obs[idx++] = t2;
-                obs[idx++] = t3; obs[idx++] = t4; obs[idx++] = t5;
+                Buffer.BlockCopy(contactObs, 0, obs, idx * sizeof(float),
+                    SynthContact.CONTACT_OBS_DIM * sizeof(float));
             }
-            else idx += 6;
+            idx += SynthContact.CONTACT_OBS_DIM;
 
+            // Per-joint strain observations (N floats)
+            int strainDim = filter.strainObsDim;
+            if (strainObs != null && strainObs.Length >= strainDim)
+            {
+                Buffer.BlockCopy(strainObs, 0, obs, idx * sizeof(float),
+                    strainDim * sizeof(float));
+            }
+            idx += strainDim;
+
+            // Sanitize
             for (int i = offset; i < idx; i++)
             {
                 float v = obs[i];
