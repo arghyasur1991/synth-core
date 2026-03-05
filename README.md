@@ -12,6 +12,18 @@ Create physics-simulated humanoids in Unity using [MuJoCo](https://mujoco.org/) 
 - **Mass Distribution** — Automatic vertex-weight-based mass allocation with hierarchical parent/child redistribution.
 - **Eye Cameras** — Stereo vision cameras positioned at eye bones for first-person visual observations.
 
+## Ecosystem
+
+synth-core is the foundation of a three-package architecture for creating, training, and interacting with physics-simulated humanoids:
+
+| Package | Role | |
+|---------|------|-|
+| **synth-core** *(this repo)* | Humanoid creation, MuJoCo physics, skill architecture | — |
+| [**synth-training**](https://github.com/arghyasur1991/synth-training) | On-device reinforcement learning via TorchSharp SAC | Optional |
+| [**synth-vr**](https://github.com/arghyasur1991/synth-vr) | Mixed reality interaction on Meta Quest | Optional |
+
+synth-core provides the physics body, motor system, and extensible skill/sense interfaces. **synth-training** plugs into these interfaces (`ISynthSkill`) to add on-device learning — no external Python server needed. **synth-vr** adds Quest hand tracking, room integration, and passthrough rendering so the Synth lives in your physical space. When all three are combined, the Synth trains live on Quest while you physically interact with it in your room.
+
 ## Requirements
 
 - Unity 6000.x or later
