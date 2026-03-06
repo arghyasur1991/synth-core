@@ -78,10 +78,10 @@ namespace Genesis.Sentience.Synth
         /// </summary>
         /// <param name="actions">Per-actuator action values (length = filter.actDim)</param>
         /// <param name="filter">Bone filter config with included actuator indices</param>
-        /// <param name="clampMin">Minimum action clamp (actor already outputs scaled values)</param>
+        /// <param name="clampMin">Minimum action clamp (matches SynthActions and training env defaults)</param>
         /// <param name="clampMax">Maximum action clamp</param>
         public unsafe void ApplyActuatorTorques(float[] actions, BoneFilterConfig filter,
-            float clampMin = -1f, float clampMax = 1f)
+            float clampMin = -0.4f, float clampMax = 0.4f)
         {
             if (!MjScene.InstanceExists || MjScene.Instance.Data == null) return;
             SynthActions.Apply(MjScene.Instance.Data, actions,
