@@ -225,7 +225,10 @@ namespace Genesis.Sentience.Synth
                       $"L1={selectorName}, " +
                       $"L0='{activeSkill.Name}' frameSkip={activeSkill.FrameSkip}, " +
                       $"motorEnabled={motorSystem?.motorEnabled}, " +
-                      $"decisions/frame={decisionsPerFrame}, " +
+                      $"subSteps/fixedUpdate={subSteps}, " +
+                      $"decisions/fixedUpdate={decisionsPerFrame}, " +
+                      $"decisionDt={_decisionDt:F6}s, " +
+                      $"fixedDt={Time.fixedDeltaTime:F6}, " +
                       $"senses=[{senseNames}])");
         }
 
