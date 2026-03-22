@@ -335,24 +335,60 @@ namespace Genesis.Sentience.Synth
         {
             StopAll(restoreRotations: false);
 
-            var animator = _entity.GetComponent<Animator>();
-            if (animator == null || animator.avatar == null || !animator.avatar.isHuman)
+            // Try prefab source first — has exact correct rotations for this scene object
+            var prefabSource = PrefabUtility.GetCorrespondingObjectFromSource(_entity.gameObject);
+            if (prefabSource != null)
             {
-                Debug.LogWarning("SynthEntityEditor: No Humanoid Animator — cannot reset pose");
+                ApplyRotationsFromReference(prefabSource);
+                RefreshOriginalRotations();
+                SceneView.RepaintAll();
+                Debug.Log("SynthEntityEditor: Skeleton reset from prefab");
                 return;
             }
 
+            // Fallback: read from SynthModel's backing model asset
+            if (_entity.synthData != null)
+            {
+                var so = new SerializedObject(_entity.synthData);
+                var humanModelProp = so.FindProperty("humanModel");
+                if (humanModelProp != null && humanModelProp.objectReferenceValue is SynthModel synthModel
+                    && synthModel.humanModel != null)
+                {
+                    ApplyRotationsFromReference(synthModel.humanModel);
+                    RefreshOriginalRotations();
+                    SceneView.RepaintAll();
+                    Debug.Log("SynthEntityEditor: Skeleton reset from model asset");
+                    return;
+                }
+            }
+
+            Debug.LogWarning("SynthEntityEditor: No prefab or model asset found to reset from");
+        }
+
+        private void ApplyRotationsFromReference(GameObject reference)
+        {
+            var refTransforms = reference.GetComponentsInChildren<Transform>(true);
+            var refMap = new Dictionary<string, Quaternion>();
+            foreach (var t in refTransforms)
+                refMap[t.name] = t.localRotation;
+
             Undo.RegisterFullObjectHierarchyUndo(_entity.gameObject, "Reset Skeleton Pose");
 
-            var handler = new HumanPoseHandler(animator.avatar, _entity.transform);
-            var pose = new HumanPose();
-            handler.GetHumanPose(ref pose);
-            for (int i = 0; i < pose.muscles.Length; i++)
-                pose.muscles[i] = 0f;
-            handler.SetHumanPose(ref pose);
-            handler.Dispose();
+            var sceneTransforms = _entity.GetComponentsInChildren<Transform>(true);
+            int applied = 0;
+            foreach (var t in sceneTransforms)
+            {
+                if (refMap.TryGetValue(t.name, out var rot) && t.localRotation != rot)
+                {
+                    t.localRotation = rot;
+                    applied++;
+                }
+            }
+            Debug.Log($"SynthEntityEditor: Applied {applied} bone rotations from reference");
+        }
 
-            // Re-capture original rotations so future oscillations are correct
+        private void RefreshOriginalRotations()
+        {
             for (int i = 0; i < _bones.Count; i++)
             {
                 var bone = _bones[i];
@@ -360,9 +396,6 @@ namespace Genesis.Sentience.Synth
                     bone.OriginalLocalRotation = bone.BoneTransform.localRotation;
                 _bones[i] = bone;
             }
-
-            SceneView.RepaintAll();
-            Debug.Log("SynthEntityEditor: Skeleton reset to T-pose");
         }
 
         private void ResetAllToDefaults()
