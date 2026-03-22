@@ -189,11 +189,21 @@ namespace Genesis.Sentience.Synth
                         {
                             if (nowViz)
                             {
-                                // One axis per bone: disable other axes first
+                                bool hadOther = false;
                                 for (int oa = 0; oa < 3; oa++)
-                                    if (oa != a) bone.Axes[oa].Visualizing = false;
+                                {
+                                    if (oa != a && bone.Axes[oa].Visualizing)
+                                    {
+                                        bone.Axes[oa].Visualizing = false;
+                                        hadOther = true;
+                                    }
+                                }
 
-                                bone.OriginalLocalRotation = bone.BoneTransform.localRotation;
+                                if (hadOther)
+                                    bone.BoneTransform.localRotation = bone.OriginalLocalRotation;
+                                else
+                                    bone.OriginalLocalRotation = bone.BoneTransform.localRotation;
+
                                 _startTime = EditorApplication.timeSinceStartup;
                             }
                             else

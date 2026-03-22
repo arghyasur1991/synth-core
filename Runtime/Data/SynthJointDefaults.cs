@@ -90,9 +90,9 @@ namespace Genesis.Sentience.Synth
                 },
                 ["UpperLeg"] = new[]
                 {
-                    new BoneJointSettings { rangeL = -30,  rangeU = 120, stiffness = 3, damping = 1, gear = 120 },
-                    new BoneJointSettings { rangeL = -40,  rangeU = 45,  stiffness = 4, damping = 2, gear = 40 },
-                    new BoneJointSettings { rangeL = -40,  rangeU = 40,  stiffness = 4, damping = 2, gear = 40 },
+                    new BoneJointSettings { rangeL = -30, rangeU = 60, stiffness = 3, damping = 1, gear = 120 },
+                    new BoneJointSettings { rangeL = -40, rangeU = 45, stiffness = 4, damping = 2, gear = 40 },
+                    new BoneJointSettings { rangeL = -40, rangeU = 40, stiffness = 4, damping = 2, gear = 40 },
                 },
                 ["LowerLeg"] = new[]
                 {
