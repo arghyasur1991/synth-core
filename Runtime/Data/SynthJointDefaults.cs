@@ -69,9 +69,9 @@ namespace Genesis.Sentience.Synth
                 },
                 ["LowerArm"] = new[]
                 {
-                    new BoneJointSettings { rangeL = -140, rangeU = 2,  stiffness = 1, damping = 0.2f, gear = 30 },
-                    new BoneJointSettings { rangeL = -5,   rangeU = 10, stiffness = 3, damping = 1,    gear = 30 },
-                    new BoneJointSettings { rangeL = -25,  rangeU = 5,  stiffness = 4, damping = 3,    gear = 30 },
+                    new BoneJointSettings { rangeL = -60, rangeU = 20, stiffness = 1, damping = 0.2f, gear = 30 },
+                    new BoneJointSettings { rangeL = -5,  rangeU = 10, stiffness = 3, damping = 1,    gear = 30 },
+                    new BoneJointSettings { rangeL = -10, rangeU = 40, stiffness = 4, damping = 3,    gear = 30 },
                 },
                 ["Hand"] = new[]
                 {
