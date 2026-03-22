@@ -141,7 +141,7 @@ namespace Genesis.Sentience.Synth
 
         /// <summary>
         /// Returns the joint range (rangeLower, rangeUpper) in degrees for a bone on a given axis.
-        /// Handles the rForearmBend flip. Returns (-5, 5) if no bone data found.
+        /// Returns (-5, 5) if no bone data found.
         /// </summary>
         public Vector2 GetJointRangeDegrees(Transform bone, int axisIndex)
         {
@@ -152,17 +152,7 @@ namespace Genesis.Sentience.Synth
                 if (settings.Count == 3 && axisIndex >= 0 && axisIndex < 3)
                 {
                     var s = settings[axisIndex];
-                    float rangeL = s.rangeL;
-                    float rangeU = s.rangeU;
-                    bool needsFlip = boneMapper != null
-                        ? boneMapper.NeedsJointRangeFlip(bone)
-                        : bone.name.StartsWith("rForearmBend");
-                    if (needsFlip && rangeL != -rangeU)
-                    {
-                        rangeL = -s.rangeU;
-                        rangeU = -s.rangeL;
-                    }
-                    return new Vector2(rangeL, rangeU);
+                    return new Vector2(s.rangeL, s.rangeU);
                 }
             }
             return new Vector2(-5, 5);
@@ -385,22 +375,10 @@ namespace Genesis.Sentience.Synth
                     float rangeL = boneSettingsAxis.rangeL;
                     float rangeU = boneSettingsAxis.rangeU;
 
-                    // Mirror joint range for right-side bones with asymmetric limits
-                    bool needsFlip = false;
-                    if (boneMapper != null)
-                    {
-                        var boneTransform = joint.transform.parent;
-                        needsFlip = boneTransform != null && boneMapper.NeedsJointRangeFlip(boneTransform);
-                    }
-                    else
-                    {
-                        needsFlip = joint.name.StartsWith("rForearmBend");
-                    }
-                    if (needsFlip && rangeL != -rangeU)
-                    {
-                        rangeL = -boneSettingsAxis.rangeU;
-                        rangeU = -boneSettingsAxis.rangeL;
-                    }
+                    // No range flip needed: left/right bones share the same local joint
+                    // axis (DazAdapter returns axis unchanged), and the skeleton hierarchy
+                    // naturally mirrors world-space orientation. The same canonical range
+                    // produces correct mirrored motion on both sides.
 
                     // MuJoCo requires range[0] < range[1] when limited=true.
                     // Fall back to defaults if the stored range is degenerate (unconfigured).

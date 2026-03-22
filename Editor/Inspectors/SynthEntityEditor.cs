@@ -425,26 +425,14 @@ namespace Genesis.Sentience.Synth
                 return;
             }
 
-            bool needsFlip = _mapper != null && _mapper.NeedsJointRangeFlip(bone.BoneTransform);
-
             for (int a = 0; a < 3; a++)
             {
                 var axis = bone.Axes[a];
                 if (axis.Joint == null) continue;
 
                 Undo.RecordObject(axis.Joint, "Reset Joint Range");
-                float rl = defaults[a].rangeL;
-                float ru = defaults[a].rangeU;
-                if (needsFlip && rl != -ru)
-                {
-                    axis.Joint.RangeLower = -ru;
-                    axis.Joint.RangeUpper = -rl;
-                }
-                else
-                {
-                    axis.Joint.RangeLower = rl;
-                    axis.Joint.RangeUpper = ru;
-                }
+                axis.Joint.RangeLower = defaults[a].rangeL;
+                axis.Joint.RangeUpper = defaults[a].rangeU;
                 EditorUtility.SetDirty(axis.Joint);
             }
         }
@@ -474,27 +462,14 @@ namespace Genesis.Sentience.Synth
                 var bj = boneJoints[bone.BoneJointIndex];
                 if (bj.boneJointSettings == null || bj.boneJointSettings.Count < 3) continue;
 
-                bool needsFlip = _mapper != null && _mapper.NeedsJointRangeFlip(bone.BoneTransform);
-
                 for (int a = 0; a < 3; a++)
                 {
                     var axis = bone.Axes[a];
                     if (axis.Joint == null) continue;
 
                     var settings = bj.boneJointSettings[a];
-                    float sceneL = axis.Joint.RangeLower;
-                    float sceneU = axis.Joint.RangeUpper;
-
-                    if (needsFlip && sceneL != -sceneU)
-                    {
-                        settings.rangeL = -sceneU;
-                        settings.rangeU = -sceneL;
-                    }
-                    else
-                    {
-                        settings.rangeL = sceneL;
-                        settings.rangeU = sceneU;
-                    }
+                    settings.rangeL = axis.Joint.RangeLower;
+                    settings.rangeU = axis.Joint.RangeUpper;
                     bj.boneJointSettings[a] = settings;
                 }
                 updated++;
