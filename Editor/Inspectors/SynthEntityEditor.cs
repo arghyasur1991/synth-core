@@ -302,7 +302,8 @@ namespace Genesis.Sentience.Synth
                     anyActive = true;
                     float angle = Mathf.Lerp(axis.Joint.RangeLower, axis.Joint.RangeUpper, blend);
                     Vector3 localAxis = axis.Joint.transform.localRotation * Vector3.right;
-                    bone.BoneTransform.localRotation = bone.OriginalLocalRotation * Quaternion.AngleAxis(angle, localAxis);
+                    // Negate angle: MuJoCo right-handed coords use opposite rotation sign vs Unity left-handed
+                    bone.BoneTransform.localRotation = bone.OriginalLocalRotation * Quaternion.AngleAxis(-angle, localAxis);
                 }
             }
 
