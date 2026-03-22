@@ -16,7 +16,8 @@ namespace Genesis.Sentience.Synth
     ///   qpos[root]    (5)  +  qpos[joints] (N)  +
     ///   qvel[root]    (6)  +  qvel[joints] (N)  +
     ///   qfrc_actuator (N)  +
-    ///   contact       (40) +  strain (N)
+    ///   contact       (40) +  strain (N)  +
+    ///   xfrc_applied  (nbody × 6)
     ///
     /// Used by:
     ///   - SynthMotorSystem (builds once after MjScene init, exposes as property)
@@ -47,6 +48,9 @@ namespace Genesis.Sentience.Synth
 
         /// <summary>Per-joint strain observation dimension</summary>
         public int strainObsDim;
+
+        /// <summary>Per-body external force observation dimension (nbody × 6)</summary>
+        public int xfrcAppliedObsDim;
 
         /// <summary>Action dimension = filteredJointCount</summary>
         public int actDim;
@@ -97,10 +101,11 @@ namespace Genesis.Sentience.Synth
 
             int contactDim = SynthContact.CONTACT_OBS_DIM; // 40
             int strainDim = nIncQvel; // one strain value per included DOF
+            int xfrcDim = nbody * 6; // 3 force + 3 torque per body
 
             // Layout: root_qpos(5) + joint_qpos(N) + root_qvel(6) + joint_qvel(N) +
-            //         qfrc_actuator(N) + contact(40) + strain(N)
-            int physicsObsDim = 5 + nIncQpos + 6 + nIncQvel + nIncQvel + contactDim + strainDim;
+            //         qfrc_actuator(N) + contact(40) + strain(N) + xfrc_applied(nbody×6)
+            int physicsObsDim = 5 + nIncQpos + 6 + nIncQvel + nIncQvel + contactDim + strainDim + xfrcDim;
 
             var config = new BoneFilterConfig
             {
@@ -115,13 +120,14 @@ namespace Genesis.Sentience.Synth
                 physicsObsDim = physicsObsDim,
                 contactObsDim = contactDim,
                 strainObsDim = strainDim,
+                xfrcAppliedObsDim = xfrcDim,
                 actDim = inclAct.Count
             };
 
             Debug.Log($"BoneFilterConfig: nq={nq}, nv={nv}, nu={nu}, nbody={nbody}, " +
                       $"excluded={excludedLog.Count} [{string.Join(", ", excludedLog)}], " +
                       $"included={inclAct.Count}, physicsObsDim={physicsObsDim} " +
-                      $"(contact={contactDim}, strain={strainDim}), actDim={config.actDim}");
+                      $"(contact={contactDim}, strain={strainDim}, xfrc={xfrcDim}), actDim={config.actDim}");
 
             return config;
         }

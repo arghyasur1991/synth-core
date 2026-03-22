@@ -7,7 +7,7 @@ namespace Genesis.Sentience.Synth
     /// <summary>
     /// Shared pure functions for building MuJoCo-level observation vectors.
     ///
-    /// Layout (v2 — with per-body contact and per-joint strain):
+    /// Layout (v3 — with per-body contact, strain, and external forces):
     ///   qpos[2:7]                    (root Z + quat)              = 5
     ///   qpos[filtered hinges]                                     = N
     ///   qvel[0:6]                    (root vel)                   = 6
@@ -15,9 +15,10 @@ namespace Genesis.Sentience.Synth
     ///   qfrc_actuator[filtered DOFs]                              = N
     ///   contact[8 bodies × 5]        (per-body contact sensing)   = 40
     ///   strain[filtered DOFs]         (per-joint strain/pain)     = N
+    ///   xfrc_applied[nbody × 6]      (external forces/torques)   = nbody×6
     ///
-    /// BREAKING CHANGE from v1: cfrc_ext sum (6 floats) is replaced by
-    /// contact (40) + strain (N). Saved models must be retrained.
+    /// BREAKING CHANGE from v2: xfrc_applied (nbody×6) appended.
+    /// Saved models must be retrained.
     /// </summary>
     public static class SynthObservations
     {
@@ -44,7 +45,7 @@ namespace Genesis.Sentience.Synth
         public static unsafe void FillPhysicsObs(
             float[] obs, int offset,
             double* qpos, double* qvel, double* qfrcActuator,
-            float[] contactObs, float[] strainObs,
+            float[] contactObs, float[] strainObs, double* xfrcApplied,
             BoneFilterConfig filter)
         {
             int[] inclQpos = filter.includedQposIdx;
@@ -92,6 +93,15 @@ namespace Genesis.Sentience.Synth
                     strainDim * sizeof(float));
             }
             idx += strainDim;
+
+            // Per-body external forces/torques (nbody × 6 floats, scaled by 0.001)
+            int xfrcDim = filter.xfrcAppliedObsDim;
+            if (xfrcApplied != null && xfrcDim > 0)
+            {
+                for (int i = 0; i < xfrcDim; i++)
+                    obs[idx++] = (float)xfrcApplied[i] * 0.001f;
+            }
+            else idx += xfrcDim;
 
             // Sanitize
             for (int i = offset; i < idx; i++)

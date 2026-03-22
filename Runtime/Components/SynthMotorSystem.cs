@@ -350,7 +350,7 @@ namespace Genesis.Sentience.Synth
             float[] strainObs = _strainComputer?.StrainBuffer;
 
             SynthObservations.FillPhysicsObs(_obsBuffer, 0, data->qpos, data->qvel,
-                data->qfrc_actuator, contactObs, strainObs, boneFilter);
+                data->qfrc_actuator, contactObs, strainObs, data->xfrc_applied, boneFilter);
             return _obsBuffer;
         }
 
