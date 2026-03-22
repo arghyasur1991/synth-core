@@ -140,6 +140,8 @@ namespace Genesis.Sentience.Synth
                 StopAll(restoreRotations: true);
             if (GUILayout.Button("Refresh", GUILayout.Width(60)))
                 Rebuild();
+            if (GUILayout.Button("Reset All to Defaults", GUILayout.Width(140)))
+                ResetAllToDefaults();
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space(4);
@@ -325,6 +327,23 @@ namespace Genesis.Sentience.Synth
             }
             _anyVisualizing = false;
             UnregisterUpdate();
+        }
+
+        private void ResetAllToDefaults()
+        {
+            StopAll(restoreRotations: true);
+            int count = 0;
+            for (int i = 0; i < _bones.Count; i++)
+            {
+                var bone = _bones[i];
+                if (SynthJointDefaults.Get(bone.DisplayName) != null)
+                {
+                    ResetBoneToDefaults(ref bone);
+                    _bones[i] = bone;
+                    count++;
+                }
+            }
+            Debug.Log($"SynthEntityEditor: Reset {count} bones to SynthJointDefaults");
         }
 
         private void ResetBoneToDefaults(ref BoneEntry bone)
