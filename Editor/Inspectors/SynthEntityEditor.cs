@@ -140,8 +140,10 @@ namespace Genesis.Sentience.Synth
                 StopAll(restoreRotations: true);
             if (GUILayout.Button("Refresh", GUILayout.Width(60)))
                 Rebuild();
-            if (GUILayout.Button("Reset All to Defaults", GUILayout.Width(140)))
+            if (GUILayout.Button("Reset Ranges", GUILayout.Width(90)))
                 ResetAllToDefaults();
+            if (GUILayout.Button("Reset Pose", GUILayout.Width(80)))
+                ResetSkeletonPose();
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space(4);
@@ -327,6 +329,40 @@ namespace Genesis.Sentience.Synth
             }
             _anyVisualizing = false;
             UnregisterUpdate();
+        }
+
+        private void ResetSkeletonPose()
+        {
+            StopAll(restoreRotations: false);
+
+            var animator = _entity.GetComponent<Animator>();
+            if (animator == null || animator.avatar == null || !animator.avatar.isHuman)
+            {
+                Debug.LogWarning("SynthEntityEditor: No Humanoid Animator — cannot reset pose");
+                return;
+            }
+
+            Undo.RegisterFullObjectHierarchyUndo(_entity.gameObject, "Reset Skeleton Pose");
+
+            var handler = new HumanPoseHandler(animator.avatar, _entity.transform);
+            var pose = new HumanPose();
+            handler.GetHumanPose(ref pose);
+            for (int i = 0; i < pose.muscles.Length; i++)
+                pose.muscles[i] = 0f;
+            handler.SetHumanPose(ref pose);
+            handler.Dispose();
+
+            // Re-capture original rotations so future oscillations are correct
+            for (int i = 0; i < _bones.Count; i++)
+            {
+                var bone = _bones[i];
+                if (bone.BoneTransform != null)
+                    bone.OriginalLocalRotation = bone.BoneTransform.localRotation;
+                _bones[i] = bone;
+            }
+
+            SceneView.RepaintAll();
+            Debug.Log("SynthEntityEditor: Skeleton reset to T-pose");
         }
 
         private void ResetAllToDefaults()
